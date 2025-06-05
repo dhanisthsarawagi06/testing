@@ -1,0 +1,8 @@
+{
+  "USER_POOL_ID": "ap-south-1_UHrKKb2yz",
+  "CLIENT_ID": "jj0ns6057rtau49pakkga33f7",
+  "CLIENT_SECRET": "119svk7nvd070aqaprfn4kipgl624i0n9sv39o943de4e1ts7rf9",
+  "DOMAIN_PREFIX": "textile-marketplace",
+  "REGION": "ap-south-1",
+  "DOMAIN": "textile-marketplace.auth.ap-south-1.amazoncognito.com"
+}

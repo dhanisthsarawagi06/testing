@@ -1,0 +1,233 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CI/CD pipeline for FastAPI Lambda function with Cognito integration'
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Description: GitHub repository owner
+  
+  GitHubRepo:
+    Type: String
+    Description: GitHub repository name
+  
+  GitHubBranch:
+    Type: String
+    Description: GitHub branch name
+    Default: main
+  
+  GitHubToken:
+    Type: String
+    Description: GitHub OAuth token
+    NoEcho: true
+  
+  CognitoUserPoolId:
+    Type: String
+    Description: Cognito User Pool ID
+  
+  CognitoClientId:
+    Type: String
+    Description: Cognito Client ID
+  
+  CognitoClientSecret:
+    Type: String
+    Description: Cognito Client Secret
+    NoEcho: true
+
+Resources:
+  # Lambda Function
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: textile-marketplace-api
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {'statusCode': 200, 'body': 'Placeholder - Will be replaced by pipeline'}
+      Runtime: python3.9
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
+          COGNITO_CLIENT_ID: !Ref CognitoClientId
+          COGNITO_CLIENT_SECRET: !Ref CognitoClientSecret
+          USER_POOL_ID: !Ref CognitoUserPoolId
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CognitoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminGetUser
+                  - cognito-idp:InitiateAuth
+                  - cognito-idp:SignUp
+                Resource: !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPoolId}
+
+  # Artifact Bucket
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+
+  # CodeBuild Role
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CodeBuildAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Resource: '*'
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+              - Effect: Allow
+                Resource: !Sub ${ArtifactBucket.Arn}/*
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+
+  # CodeBuild Project
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AWS::StackName}-build
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yml
+
+  # Pipeline Role
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodePipelineAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Resource: '*'
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+              - Effect: Allow
+                Resource: !Sub ${ArtifactBucket.Arn}/*
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+
+  # CI/CD Pipeline
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: 1
+                Provider: GitHub
+              Configuration:
+                Owner: !Ref GitHubOwner
+                Repo: !Ref GitHubRepo
+                Branch: !Ref GitHubBranch
+                OAuthToken: !Ref GitHubToken
+              OutputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
+
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: SourceCode
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+
+        - Name: Deploy
+          Actions:
+            - Name: Deploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: Lambda
+              Configuration:
+                FunctionName: !Ref LambdaFunction
+              InputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+
+Outputs:
+  PipelineURL:
+    Description: CodePipeline URL
+    Value: !Sub https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/${Pipeline}
+  LambdaFunctionARN:
+    Description: Lambda Function ARN
+    Value: !GetAtt LambdaFunction.Arn
+  LambdaFunctionURL:
+    Description: Lambda Function URL
+    Value: !Sub https://${LambdaFunction}.lambda-url.${AWS::Region}.on.aws

@@ -1,0 +1,33 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+  pre_build:
+    commands:
+      - echo "Installing dependencies..."
+      - cd textile-marketplace/backend || exit 1
+      - pip install -r requirements.txt
+  build:
+    commands:
+      - echo "Running tests if any..."
+      # Add your test commands here if needed
+  post_build:
+    commands:
+      - echo "Preparing Lambda deployment package..."
+      - mkdir -p build
+      - cp -r app build/ || exit 1
+      - cp lambda_function.py build/ || exit 1
+      - cp lambda_handler.py build/ || exit 1
+      - cp requirements.txt build/ || exit 1
+      - cd build
+      - pip install -r requirements.txt -t . || exit 1
+      - zip -r ../../function.zip . || exit 1
+      - cd ../..
+      - echo "Build completed successfully"
+
+artifacts:
+  files:
+    - function.zip
+  discard-paths: yes
