@@ -10,7 +10,7 @@ import base64
 import hashlib
 
 
-# This is for testing purpose to check the
+# This is for testing purpose
 
 # Configure logging
 logger = logging.getLogger()
