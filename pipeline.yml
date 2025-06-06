@@ -50,7 +50,6 @@ Resources:
       MemorySize: 256
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
           COGNITO_CLIENT_ID: !Ref CognitoClientId
           COGNITO_CLIENT_SECRET: !Ref CognitoClientSecret
           USER_POOL_ID: !Ref CognitoUserPoolId
@@ -83,7 +82,7 @@ Resources:
   # Artifact Bucket
   ArtifactBucket:
     Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
     Properties:
       VersioningConfiguration:
         Status: Enabled
