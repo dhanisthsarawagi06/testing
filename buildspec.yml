@@ -7,7 +7,7 @@ phases:
   pre_build:
     commands:
       - echo "Installing dependencies..."
-      - cd textile-marketplace/backend || exit 1
+      - cd backend || exit 1
       - pip install -r requirements.txt
   build:
     commands:
