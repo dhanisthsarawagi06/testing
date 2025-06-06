@@ -7,7 +7,8 @@ phases:
   pre_build:
     commands:
       - echo "Installing dependencies..."
-      - cd backend || exit 1
+      - pwd  # Debug: Print current directory
+      - ls -la  # Debug: List directory contents
       - pip install -r requirements.txt
   build:
     commands:
@@ -23,8 +24,8 @@ phases:
       - cp requirements.txt build/ || exit 1
       - cd build
       - pip install -r requirements.txt -t . || exit 1
-      - zip -r ../../function.zip . || exit 1
-      - cd ../..
+      - zip -r ../function.zip . || exit 1  # Changed path
+      - cd ..
       - echo "Build completed successfully"
 
 artifacts:
