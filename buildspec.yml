@@ -9,32 +9,33 @@ phases:
       - echo "Installing dependencies..."
       - pwd  # Debug: Print current directory
       - ls -la  # Debug: List directory contents
-      - pip install -r requirements.txt
   build:
     commands:
       - echo "Running tests if any..."
       # Add your test commands here if needed
   post_build:
     commands:
-      - echo "Preparing Lambda deployment package..."
-      - mkdir -p build
-      - cp -r app build/ || exit 1
-      - cp lambda_function.py build/ || exit 1
-      - cp lambda_handler.py build/ || exit 1
-      - cp requirements.txt build/ || exit 1
-      - cd build
-      - pip install -r requirements.txt -t . || exit 1
+      # Create function package (without dependencies)
+      - echo "Preparing Lambda function package..."
+      - mkdir -p function-package
+      - cp -r app function-package/ || exit 1
+      - cp lambda_function.py function-package/ || exit 1
+      - cp lambda_handler.py function-package/ || exit 1
+      - cd function-package
       - zip -r ../function.zip . || exit 1
       - cd ..
-      - mkdir -p deploy
-      - cp function.zip deploy/
-      - cd deploy
-      - unzip function.zip
-      - rm function.zip
-      - echo "Build completed successfully"
+
+      # Create layer package (only dependencies)
+      - echo "Preparing Lambda layer package..."
+      - mkdir -p layer/python
+      - cd layer/python
+      - pip install -r ../../requirements.txt -t . || exit 1
+      - cd ..
+      - zip -r ../layer.zip . || exit 1
+      - cd ..
 
 artifacts:
   files:
-    - '**/*'  # Changed to include all files
-  base-directory: deploy  # Added base-directory
-  discard-paths: no  # Changed to no to maintain directory structure
+    - function.zip
+    - layer.zip
+  discard-paths: yes

@@ -34,6 +34,18 @@ Parameters:
     NoEcho: true
 
 Resources:
+  # Lambda Layer
+  DependenciesLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-dependencies
+      Description: Python dependencies for the Lambda function
+      Content:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: layer.zip
+      CompatibleRuntimes:
+        - python3.9
+
   # Lambda Function
   LambdaFunction:
     Type: AWS::Lambda::Function
@@ -42,12 +54,13 @@ Resources:
       Handler: lambda_function.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        ZipFile: |
-          def handler(event, context):
-              return {'statusCode': 200, 'body': 'Placeholder - Will be replaced by pipeline'}
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: function.zip
       Runtime: python3.9
       Timeout: 30
       MemorySize: 256
+      Layers:
+        - !Ref DependenciesLayer
       Environment:
         Variables:
           COGNITO_CLIENT_ID: !Ref CognitoClientId
@@ -169,6 +182,9 @@ Resources:
                   - lambda:GetFunctionConfiguration
                   - lambda:InvokeFunction
                   - lambda:PublishVersion
+                  - lambda:PublishLayerVersion
+                  - lambda:GetLayerVersion
+                  - lambda:DeleteLayerVersion
                   - s3:*
                   - codecommit:CancelUploadArchive
                   - codecommit:GetBranch
@@ -205,6 +221,9 @@ Resources:
                   - lambda:UpdateFunctionConfiguration
                   - lambda:InvokeFunction
                   - lambda:PublishVersion
+                  - lambda:PublishLayerVersion
+                  - lambda:GetLayerVersion
+                  - lambda:DeleteLayerVersion
 
   # CI/CD Pipeline
   Pipeline:
