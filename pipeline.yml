@@ -34,38 +34,41 @@ Parameters:
     NoEcho: true
 
 Resources:
-  # Lambda Layer
-  DependenciesLayer:
-    Type: AWS::Lambda::LayerVersion
-    Properties:
-      LayerName: !Sub ${AWS::StackName}-dependencies
-      Description: Python dependencies for the Lambda function
-      Content:
-        S3Bucket: !Ref ArtifactBucket
-        S3Key: layer.zip
-      CompatibleRuntimes:
-        - python3.9
-
   # Lambda Function
   LambdaFunction:
     Type: AWS::Lambda::Function
+    DependsOn: ArtifactBucket
     Properties:
       FunctionName: textile-marketplace-api
       Handler: lambda_function.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: !Ref ArtifactBucket
-        S3Key: function.zip
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'Placeholder - Will be replaced by pipeline'}
       Runtime: python3.9
       Timeout: 30
       MemorySize: 256
-      Layers:
-        - !Ref DependenciesLayer
       Environment:
         Variables:
           COGNITO_CLIENT_ID: !Ref CognitoClientId
           COGNITO_CLIENT_SECRET: !Ref CognitoClientSecret
           USER_POOL_ID: !Ref CognitoUserPoolId
+
+  # Lambda Layer
+  DependenciesLayer:
+    Type: AWS::Lambda::LayerVersion
+    DependsOn:
+      - ArtifactBucket
+      - Pipeline
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-dependencies
+      Description: Python dependencies for the Lambda function
+      Content:
+        ZipFile: |
+          # Placeholder layer content
+      CompatibleRuntimes:
+        - python3.9
 
   # Lambda Execution Role
   LambdaExecutionRole:
@@ -269,7 +272,20 @@ Resources:
 
         - Name: Deploy
           Actions:
-            - Name: Deploy
+            - Name: UpdateLambdaLayer
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: Lambda
+              Configuration:
+                FunctionName: !Ref DependenciesLayer
+                DeploymentType: Layer
+              InputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+            
+            - Name: UpdateLambdaFunction
               ActionTypeId:
                 Category: Deploy
                 Owner: AWS
@@ -277,9 +293,10 @@ Resources:
                 Provider: Lambda
               Configuration:
                 FunctionName: !Ref LambdaFunction
+                DeploymentType: Function
               InputArtifacts:
                 - Name: BuildOutput
-              RunOrder: 1
+              RunOrder: 2
 
 Outputs:
   PipelineURL:

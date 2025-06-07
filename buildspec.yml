@@ -34,6 +34,14 @@ phases:
       - zip -r ../layer.zip . || exit 1
       - cd ..
 
+      # Debug output
+      - echo "Listing artifacts:"
+      - ls -la *.zip
+      - echo "Content of function.zip:"
+      - unzip -l function.zip
+      - echo "Content of layer.zip:"
+      - unzip -l layer.zip
+
 artifacts:
   files:
     - function.zip
