@@ -157,12 +157,24 @@ Resources:
                   - codebuild:BatchGetBuilds
                   - lambda:UpdateFunctionCode
                   - lambda:UpdateFunctionConfiguration
+                  - lambda:GetFunction
+                  - lambda:UpdateFunctionCode
+                  - s3:*
+                  - codecommit:CancelUploadArchive
+                  - codecommit:GetBranch
+                  - codecommit:GetCommit
+                  - codecommit:GetUploadArchiveStatus
+                  - codecommit:UploadArchive
+                  - codedeploy:*
+                  - cloudwatch:*
+                  - iam:PassRole
               - Effect: Allow
                 Resource: !Sub ${ArtifactBucket.Arn}/*
                 Action:
                   - s3:PutObject
                   - s3:GetObject
                   - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
 
   # CI/CD Pipeline
   Pipeline:
@@ -216,6 +228,7 @@ Resources:
                 Provider: Lambda
               Configuration:
                 FunctionName: !Ref LambdaFunction
+                DeploymentType: AllAtOnce
               InputArtifacts:
                 - Name: BuildOutput
               RunOrder: 1
