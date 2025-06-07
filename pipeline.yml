@@ -158,7 +158,6 @@ Resources:
                   - lambda:UpdateFunctionCode
                   - lambda:UpdateFunctionConfiguration
                   - lambda:GetFunction
-                  - lambda:UpdateFunctionCode
                   - lambda:InvokeFunction
                   - s3:*
                   - codecommit:CancelUploadArchive
@@ -223,13 +222,12 @@ Resources:
           Actions:
             - Name: Deploy
               ActionTypeId:
-                Category: Invoke
+                Category: Deploy
                 Owner: AWS
                 Version: 1
                 Provider: Lambda
               Configuration:
                 FunctionName: !Ref LambdaFunction
-                DeploymentType: AllAtOnce
               InputArtifacts:
                 - Name: BuildOutput
               RunOrder: 1
@@ -241,6 +239,3 @@ Outputs:
   LambdaFunctionARN:
     Description: Lambda Function ARN
     Value: !GetAtt LambdaFunction.Arn
-  LambdaFunctionURL:
-    Description: Lambda Function URL
-    Value: !Sub https://${LambdaFunction}.lambda-url.${AWS::Region}.on.aws
