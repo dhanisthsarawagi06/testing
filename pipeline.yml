@@ -166,6 +166,7 @@ Resources:
                   - lambda:UpdateFunctionCode
                   - lambda:UpdateFunctionConfiguration
                   - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
                   - lambda:InvokeFunction
                   - s3:*
                   - codecommit:CancelUploadArchive
@@ -194,6 +195,14 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
+              - Effect: Allow
+                Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunction}
+                Action:
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:InvokeFunction
 
   # CI/CD Pipeline
   Pipeline:
