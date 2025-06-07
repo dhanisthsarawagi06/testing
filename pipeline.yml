@@ -159,6 +159,7 @@ Resources:
                   - lambda:UpdateFunctionConfiguration
                   - lambda:GetFunction
                   - lambda:UpdateFunctionCode
+                  - lambda:InvokeFunction
                   - s3:*
                   - codecommit:CancelUploadArchive
                   - codecommit:GetBranch
@@ -222,7 +223,7 @@ Resources:
           Actions:
             - Name: Deploy
               ActionTypeId:
-                Category: Deploy
+                Category: Invoke
                 Owner: AWS
                 Version: 1
                 Provider: Lambda
