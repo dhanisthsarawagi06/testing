@@ -168,6 +168,7 @@ Resources:
                   - lambda:GetFunction
                   - lambda:GetFunctionConfiguration
                   - lambda:InvokeFunction
+                  - lambda:PublishVersion
                   - s3:*
                   - codecommit:CancelUploadArchive
                   - codecommit:GetBranch
@@ -203,6 +204,7 @@ Resources:
                   - lambda:UpdateFunctionCode
                   - lambda:UpdateFunctionConfiguration
                   - lambda:InvokeFunction
+                  - lambda:PublishVersion
 
   # CI/CD Pipeline
   Pipeline:
