@@ -24,11 +24,17 @@ phases:
       - cp requirements.txt build/ || exit 1
       - cd build
       - pip install -r requirements.txt -t . || exit 1
-      - zip -r ../function.zip . || exit 1  # Changed path
+      - zip -r ../function.zip . || exit 1
       - cd ..
+      - mkdir -p deploy
+      - cp function.zip deploy/
+      - cd deploy
+      - unzip function.zip
+      - rm function.zip
       - echo "Build completed successfully"
 
 artifacts:
   files:
-    - function.zip
-  discard-paths: yes
+    - '**/*'  # Changed to include all files
+  base-directory: deploy  # Added base-directory
+  discard-paths: no  # Changed to no to maintain directory structure
