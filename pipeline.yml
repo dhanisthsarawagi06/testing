@@ -60,7 +60,6 @@ Resources:
     Type: AWS::Lambda::LayerVersion
     DependsOn:
       - ArtifactBucket
-      - Pipeline
     Properties:
       LayerName: !Sub ${AWS::StackName}-dependencies
       Description: Python dependencies for the Lambda function
@@ -274,26 +273,25 @@ Resources:
           Actions:
             - Name: UpdateLambdaLayer
               ActionTypeId:
-                Category: Deploy
+                Category: Invoke
                 Owner: AWS
                 Version: 1
                 Provider: Lambda
               Configuration:
-                FunctionName: !Ref DependenciesLayer
-                DeploymentType: Layer
+                FunctionName: !Ref LambdaFunction
+                LayerVersionArn: !Ref DependenciesLayer
               InputArtifacts:
                 - Name: BuildOutput
               RunOrder: 1
             
             - Name: UpdateLambdaFunction
               ActionTypeId:
-                Category: Deploy
+                Category: Invoke
                 Owner: AWS
                 Version: 1
                 Provider: Lambda
               Configuration:
                 FunctionName: !Ref LambdaFunction
-                DeploymentType: Function
               InputArtifacts:
                 - Name: BuildOutput
               RunOrder: 2
