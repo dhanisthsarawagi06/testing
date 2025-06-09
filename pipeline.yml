@@ -394,13 +394,16 @@ Resources:
           phases:
             pre_build:
               commands:
-                - echo "Installing dependencies..."
+                - echo "Setting up build environment..."
+                - pwd
+                - ls -la
                 - mkdir -p layer/python
             build:
               commands:
                 - echo "Building Lambda layer..."
-                - cp requirements.txt layer/python/
-                - cd layer/python
+                - cd textile-marketplace/backend  # Navigate to backend directory
+                - cp requirements.txt ../../layer/python/
+                - cd ../../layer/python
                 - pip install -r requirements.txt -t .
                 - cd ../..
                 - zip -r layer.zip layer/
@@ -409,6 +412,7 @@ Resources:
             post_build:
               commands:
                 - echo "Layer creation completed"
+                - ls -la  # Debug: List files
           artifacts:
             files:
               - layer.zip
@@ -431,16 +435,27 @@ Resources:
         BuildSpec: |
           version: 0.2
           phases:
+            pre_build:
+              commands:
+                - echo "Setting up build environment..."
+                - pwd
+                - ls -la
             build:
               commands:
-                - mkdir -p function-package
-                - cp -r app function-package/
-                - cp lambda_function.py function-package/
-                - cp lambda_handler.py function-package/
-                - cd function-package
+                - echo "Building Lambda function package..."
+                - cd textile-marketplace/backend
+                - mkdir -p ../../function-package
+                - cp -r app ../../function-package/
+                - cp lambda_function.py ../../function-package/
+                - cp lambda_handler.py ../../function-package/
+                - cd ../../function-package
                 - zip -r ../function.zip .
                 - cd ..
                 - aws lambda update-function-code --function-name ${LambdaFunction} --zip-file fileb://function.zip
+            post_build:
+              commands:
+                - echo "Function package creation completed"
+                - ls -la  # Debug: List files
           artifacts:
             files:
               - function.zip
