@@ -56,18 +56,18 @@ Resources:
           USER_POOL_ID: !Ref CognitoUserPoolId
 
   # Lambda Layer
-  DependenciesLayer:
-    Type: AWS::Lambda::LayerVersion
-    DependsOn:
-      - ArtifactBucket
-    Properties:
-      LayerName: !Sub ${AWS::StackName}-dependencies
-      Description: Python dependencies for the Lambda function
-      Content:
-        S3Bucket: !Ref ArtifactBucket
-        S3Key: initial-layer.zip
-      CompatibleRuntimes:
-        - python3.9
+  # DependenciesLayer:
+  #   Type: AWS::Lambda::LayerVersion
+  #   DependsOn:
+  #     - ArtifactBucket
+  #   Properties:
+  #     LayerName: !Sub ${AWS::StackName}-dependencies
+  #     Description: Python dependencies for the Lambda function
+  #     Content:
+  #       S3Bucket: !Ref ArtifactBucket
+  #       S3Key: initial-layer.zip
+  #     CompatibleRuntimes:
+  #       - python3.9
 
   # Initial Layer Upload
   InitialLayerUpload:
@@ -208,6 +208,15 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
+              - Effect: Allow
+                Action:
+                  - lambda:PublishLayerVersion
+                  - lambda:UpdateFunctionCode
+                  - lambda:GetLayerVersion
+                  - lambda:DeleteLayerVersion
+                Resource: 
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:${AWS::StackName}-dependencies:*
+                  - !GetAtt LambdaFunction.Arn
 
   # CodeBuild Project
   CodeBuildProject:
@@ -339,29 +348,28 @@ Resources:
 
         - Name: Deploy
           Actions:
-            - Name: UpdateLambdaLayer
+            - Name: CreateUpdateLayer
               ActionTypeId:
-                Category: Deploy
+                Category: Build
                 Owner: AWS
                 Version: 1
-                Provider: Lambda
+                Provider: CodeBuild
               Configuration:
-                FunctionName: !Ref LambdaFunction
-                LayerName: !GetAtt DependenciesLayer.LayerName
-                Action: PublishLayerVersion
+                ProjectName: !Ref LayerBuildProject
               InputArtifacts:
                 - Name: BuildOutput
+              OutputArtifacts:
+                - Name: LayerArtifact
               RunOrder: 1
             
             - Name: UpdateLambdaFunction
               ActionTypeId:
-                Category: Deploy
+                Category: Build
                 Owner: AWS
                 Version: 1
-                Provider: Lambda
+                Provider: CodeBuild
               Configuration:
-                FunctionName: !Ref LambdaFunction
-                Action: UpdateFunctionCode
+                ProjectName: !Ref FunctionBuildProject
               InputArtifacts:
                 - Name: BuildOutput
               RunOrder: 2
@@ -373,3 +381,64 @@ Outputs:
   LambdaFunctionARN:
     Description: Lambda Function ARN
     Value: !GetAtt LambdaFunction.Arn
+
+# Add a separate CodeBuild project for layer management
+LayerBuildProject:
+  Type: AWS::CodeBuild::Project
+  Properties:
+    Name: !Sub ${AWS::StackName}-layer-build
+    ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+    Artifacts:
+      Type: CODEPIPELINE
+    Environment:
+      Type: LINUX_CONTAINER
+      ComputeType: BUILD_GENERAL1_SMALL
+      Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+      PrivilegedMode: false
+    Source:
+      Type: CODEPIPELINE
+      BuildSpec: |
+        version: 0.2
+        phases:
+          build:
+            commands:
+              - mkdir -p layer/python
+              - cd layer/python
+              - pip install -r ../../requirements.txt -t .
+              - cd ../..
+              - aws lambda publish-layer-version --layer-name ${AWS::StackName}-dependencies --zip-file fileb://layer.zip --compatible-runtimes python3.9
+        artifacts:
+          files:
+            - layer.zip
+
+# Add a separate CodeBuild project for function deployment
+FunctionBuildProject:
+  Type: AWS::CodeBuild::Project
+  Properties:
+    Name: !Sub ${AWS::StackName}-function-build
+    ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+    Artifacts:
+      Type: CODEPIPELINE
+    Environment:
+      Type: LINUX_CONTAINER
+      ComputeType: BUILD_GENERAL1_SMALL
+      Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+      PrivilegedMode: false
+    Source:
+      Type: CODEPIPELINE
+      BuildSpec: |
+        version: 0.2
+        phases:
+          build:
+            commands:
+              - mkdir -p function-package
+              - cp -r app function-package/
+              - cp lambda_function.py function-package/
+              - cp lambda_handler.py function-package/
+              - cd function-package
+              - zip -r ../function.zip .
+              - cd ..
+              - aws lambda update-function-code --function-name ${LambdaFunction} --zip-file fileb://function.zip
+        artifacts:
+          files:
+            - function.zip
