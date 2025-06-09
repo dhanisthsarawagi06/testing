@@ -381,18 +381,19 @@ Resources:
         BuildSpec: |
           version: 0.2
           phases:
+            install:
+              runtime-versions:
+                python: 3.9
             pre_build:
               commands:
                 - echo "Debugging directory structure..."
                 - pwd
                 - ls -la
-                - echo "Current directory contents:"
-                - find . -type f
             build:
               commands:
                 - echo "Building Lambda layer..."
                 - mkdir -p layer/python
-                - cp backend/requirements.txt layer/python/  # Updated path
+                - cp requirements.txt layer/python/  # Updated path
                 - cd layer/python
                 - pip install -r requirements.txt -t .
                 - cd ../..
@@ -405,7 +406,8 @@ Resources:
                 - ls -la
           artifacts:
             files:
-              - layer.zip
+              - '**/*'
+            base-directory: layer
 
   # Function Build Project (as a separate resource)
   FunctionBuildProject:
@@ -433,17 +435,13 @@ Resources:
                 - echo "Debugging directory structure..."
                 - pwd
                 - ls -la
-                - echo "Current directory contents:"
-                - find . -type f
             build:
               commands:
                 - echo "Building Lambda function package..."
                 - mkdir -p function-package
-                - ls -la
-                - pwd
-                - cp -r app function-package/ || echo "app directory not found"
-                - cp lambda_function.py function-package/ || echo "lambda_function.py not found"
-                - cp lambda_handler.py function-package/ || echo "lambda_handler.py not found"
+                - cp -r app function-package/
+                - cp lambda_function.py function-package/
+                - cp lambda_handler.py function-package/
                 - cd function-package
                 - zip -r ../function.zip .
                 - cd ..
@@ -454,7 +452,8 @@ Resources:
                 - ls -la
           artifacts:
             files:
-              - function.zip
+              - '**/*'
+            base-directory: function-package
 
 Outputs:
   PipelineURL:
