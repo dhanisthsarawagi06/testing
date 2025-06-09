@@ -45,5 +45,4 @@ phases:
 artifacts:
   files:
     - function.zip
-    - layer.zip
-  discard-paths: yes
+    - layer.zip  discard-paths: yes

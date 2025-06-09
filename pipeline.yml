@@ -326,29 +326,14 @@ Resources:
                 Repo: !Ref GitHubRepo
                 Branch: !Ref GitHubBranch
                 OAuthToken: !Ref GitHubToken
+                PollForSourceChanges: true
               OutputArtifacts:
                 - Name: SourceCode
               RunOrder: 1
 
         - Name: Build
           Actions:
-            - Name: Build
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Version: 1
-                Provider: CodeBuild
-              Configuration:
-                ProjectName: !Ref CodeBuildProject
-              InputArtifacts:
-                - Name: SourceCode
-              OutputArtifacts:
-                - Name: BuildOutput
-              RunOrder: 1
-
-        - Name: Deploy
-          Actions:
-            - Name: CreateUpdateLayer
+            - Name: BuildLayer
               ActionTypeId:
                 Category: Build
                 Owner: AWS
@@ -356,13 +341,14 @@ Resources:
                 Provider: CodeBuild
               Configuration:
                 ProjectName: !Ref LayerBuildProject
+                PrimarySource: SourceCode
               InputArtifacts:
-                - Name: BuildOutput
+                - Name: SourceCode
               OutputArtifacts:
-                - Name: LayerArtifact
+                - Name: LayerBuildOutput
               RunOrder: 1
             
-            - Name: UpdateLambdaFunction
+            - Name: BuildFunction
               ActionTypeId:
                 Category: Build
                 Owner: AWS
@@ -370,8 +356,11 @@ Resources:
                 Provider: CodeBuild
               Configuration:
                 ProjectName: !Ref FunctionBuildProject
+                PrimarySource: SourceCode
               InputArtifacts:
-                - Name: BuildOutput
+                - Name: SourceCode
+              OutputArtifacts:
+                - Name: FunctionBuildOutput
               RunOrder: 2
 
   # Layer Build Project (as a separate resource)
@@ -436,6 +425,9 @@ Resources:
         BuildSpec: |
           version: 0.2
           phases:
+            install:
+              runtime-versions:
+                python: 3.9
             pre_build:
               commands:
                 - echo "Debugging directory structure..."
@@ -447,9 +439,11 @@ Resources:
               commands:
                 - echo "Building Lambda function package..."
                 - mkdir -p function-package
-                - cp -r backend/app function-package/  # Updated paths
-                - cp backend/lambda_function.py function-package/
-                - cp backend/lambda_handler.py function-package/
+                - ls -la
+                - pwd
+                - cp -r app function-package/ || echo "app directory not found"
+                - cp lambda_function.py function-package/ || echo "lambda_function.py not found"
+                - cp lambda_handler.py function-package/ || echo "lambda_handler.py not found"
                 - cd function-package
                 - zip -r ../function.zip .
                 - cd ..
