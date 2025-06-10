@@ -376,6 +376,9 @@ Resources:
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
         PrivilegedMode: false
+        EnvironmentVariables:
+          - Name: STACK_NAME
+            Value: !Ref AWS::StackName
       Source:
         Type: CODEPIPELINE
         BuildSpec: |
@@ -386,20 +389,22 @@ Resources:
                 python: 3.9
             pre_build:
               commands:
-                - echo "Debugging directory structure..."
-                - pwd
-                - ls -la
+                - echo "Building for stack: ${STACK_NAME}"
             build:
               commands:
                 - echo "Building Lambda layer..."
                 - mkdir -p layer/python
-                - cp requirements.txt layer/python/  # Updated path
+                - cp requirements.txt layer/python/
                 - cd layer/python
                 - pip install -r requirements.txt -t .
                 - cd ../..
                 - zip -r layer.zip layer/
                 - echo "Creating Lambda layer..."
-                - aws lambda publish-layer-version --layer-name ${AWS::StackName}-dependencies --zip-file fileb://layer.zip --compatible-runtimes python3.9
+                - aws lambda publish-layer-version \
+                    --layer-name "${STACK_NAME}-dependencies" \
+                    --description "Dependencies for ${STACK_NAME}" \
+                    --zip-file fileb://layer.zip \
+                    --compatible-runtimes python3.9
             post_build:
               commands:
                 - echo "Layer creation completed"
@@ -422,6 +427,11 @@ Resources:
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
         PrivilegedMode: false
+        EnvironmentVariables:
+          - Name: STACK_NAME
+            Value: !Ref AWS::StackName
+          - Name: FUNCTION_NAME
+            Value: !Ref LambdaFunction
       Source:
         Type: CODEPIPELINE
         BuildSpec: |
@@ -432,9 +442,7 @@ Resources:
                 python: 3.9
             pre_build:
               commands:
-                - echo "Debugging directory structure..."
-                - pwd
-                - ls -la
+                - echo "Building for function: ${FUNCTION_NAME}"
             build:
               commands:
                 - echo "Building Lambda function package..."
@@ -445,7 +453,9 @@ Resources:
                 - cd function-package
                 - zip -r ../function.zip .
                 - cd ..
-                - aws lambda update-function-code --function-name ${LambdaFunction} --zip-file fileb://function.zip
+                - aws lambda update-function-code \
+                    --function-name "${FUNCTION_NAME}" \
+                    --zip-file fileb://function.zip
             post_build:
               commands:
                 - echo "Function package creation completed"
