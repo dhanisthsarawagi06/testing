@@ -389,7 +389,7 @@ Resources:
                 python: 3.9
             pre_build:
               commands:
-                - echo "Building for stack: ${STACK_NAME}"
+                - echo "Building for stack ${STACK_NAME}"
             build:
               commands:
                 - echo "Building Lambda layer..."
@@ -400,11 +400,7 @@ Resources:
                 - cd ../..
                 - zip -r layer.zip layer/
                 - echo "Creating Lambda layer..."
-                - aws lambda publish-layer-version \
-                    --layer-name "${STACK_NAME}-dependencies" \
-                    --description "Dependencies for ${STACK_NAME}" \
-                    --zip-file fileb://layer.zip \
-                    --compatible-runtimes python3.9
+                - aws lambda publish-layer-version --layer-name "${STACK_NAME}-dependencies" --description "Dependencies for ${STACK_NAME}" --zip-file fileb://layer.zip --compatible-runtimes python3.9
             post_build:
               commands:
                 - echo "Layer creation completed"
@@ -442,7 +438,7 @@ Resources:
                 python: 3.9
             pre_build:
               commands:
-                - echo "Building for function: ${FUNCTION_NAME}"
+                - echo "Building for function ${FUNCTION_NAME}"
             build:
               commands:
                 - echo "Building Lambda function package..."
@@ -453,9 +449,7 @@ Resources:
                 - cd function-package
                 - zip -r ../function.zip .
                 - cd ..
-                - aws lambda update-function-code \
-                    --function-name "${FUNCTION_NAME}" \
-                    --zip-file fileb://function.zip
+                - aws lambda update-function-code --function-name "${FUNCTION_NAME}" --zip-file fileb://function.zip
             post_build:
               commands:
                 - echo "Function package creation completed"
