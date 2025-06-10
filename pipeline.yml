@@ -201,22 +201,20 @@ Resources:
                   - s3:GetObject
                   - s3:GetObjectVersion
               - Effect: Allow
-                Resource: 
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-              - Effect: Allow
-                Resource: 
-                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:${AWS::StackName}-dependencies:*
-                  - !GetAtt LambdaFunction.Arn
+                Resource:
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:*
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:*:*
                 Action:
                   - lambda:PublishLayerVersion
-                  - lambda:GetLayerVersion
                   - lambda:DeleteLayerVersion
+                  - lambda:GetLayerVersion
+              - Effect: Allow
+                Resource: !GetAtt LambdaFunction.Arn
+                Action:
                   - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
 
   # CodeBuild Project
   CodeBuildProject:
